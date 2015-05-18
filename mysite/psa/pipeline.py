@@ -4,7 +4,7 @@ from django.contrib.auth import login, logout
 # from django.core.mail import send_mail
 from django.conf import settings
 from django.db import IntegrityError
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 import time
 from datetime import datetime
 
@@ -21,8 +21,9 @@ from psa.models import AnonymEmail, SecondaryEmail
 # if is_new and kwargs.get('backend').name == 'email':
 #         email = user.email or details.get('email')
 #         if strategy.request.POST.get('password'):
-#             if 'anonymous' in user.username:
+#             if user.is_temporary:
 #                 user.username = details.get('username')
+#                 user.is_temporary = False
 #                 user.first_name = ''
 #             username = user.username
 #             password = strategy.request.POST.get('password')
@@ -64,7 +65,7 @@ def custom_mail_validation(backend, details, user=None, is_new=False, *args, **k
             # This is very straightforward method
             # TODO Need to check current user to avoid unnecessary check
             if code.user_id:
-                user_from_code = User.objects.filter(id=code.user_id).first()
+                user_from_code = get_user_model().objects.filter(id=code.user_id).first()
                 if user_from_code:
                     user = user_from_code
                     logout(backend.strategy.request)
@@ -72,9 +73,12 @@ def custom_mail_validation(backend, details, user=None, is_new=False, *args, **k
                     login(backend.strategy.request, user)
                     return {'user': user}
         else:
-            if user and 'anonymous' in user.username:
-                AnonymEmail.objects.get_or_create(user=user, email=details.get('email'),
-                                                  defaults={'date': datetime.now()})
+            if user and user.is_temporary:
+                AnonymEmail.objects.get_or_create(
+                    user=user,
+                    email=details.get('email'),
+                    defaults={'date': datetime.now()}
+                )
             backend.strategy.send_email_validation(backend, details['email'])
             backend.strategy.session_set('email_validation_address',
                                          details['email'])
@@ -134,7 +138,7 @@ def validated_user_details(strategy, backend, details, user=None, is_new=False, 
     """
     social = kwargs.get('social')
     email = details.get('email')
-    if user and 'anonymous' in user.username:
+    if user and user.is_temporary:
         if social:
             tmp_user = user
             logout(strategy.request)
@@ -161,6 +165,7 @@ def validated_user_details(strategy, backend, details, user=None, is_new=False, 
                 if not new:
                     user.username = details.get('username')
                     user.first_name = ''
+                    user.is_temporary = False
                     user.save()
                 else:
                     tmp_user = user
@@ -221,11 +226,11 @@ def social_user(backend, uid, user=None, *args, **kwargs):
     provider = backend.name
     social = backend.strategy.storage.user.get_social_auth(provider, uid)
     if social:
-        if user and social.user != user and 'anonymous' not in user.username:
+        if user and social.user != user and not user.is_temporary:
             if not_allowed_to_merge(user, social.user):
                 msg = 'Merge aborted due to providers intersection.'
                 raise AuthAlreadyAssociated(backend, msg)
-        elif not user or 'anonymous' in user.username:
+        elif not user or user.is_temporary:
             user = social.user
     return {'social': social,
             'user': user,

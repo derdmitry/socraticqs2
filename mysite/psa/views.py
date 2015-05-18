@@ -2,13 +2,16 @@ from django.shortcuts import redirect
 from django.shortcuts import render_to_response
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.template import RequestContext
 from django.conf import settings
-from django.contrib.auth.models import User
 
 from psa.utils import render_to
 from psa.models import SecondaryEmail
 from social.backends.utils import load_backends
+
+
+User = get_user_model()
 
 
 def context(**extra):

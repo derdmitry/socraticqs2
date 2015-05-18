@@ -1,11 +1,13 @@
-from django.db import models, transaction
-from django.contrib.auth.models import User
-from django.core.exceptions import ObjectDoesNotExist
-from django.utils import timezone
-from django.core.urlresolvers import reverse
-from django.db.models import Q, Count, Max
-import glob
 import json
+
+from django.conf import settings
+from django.utils import timezone
+from django.db import models, transaction
+from django.db.models import Q, Count, Max
+from django.core.urlresolvers import reverse
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
+
 import ct_util
 
 
@@ -14,8 +16,8 @@ import ct_util
 
 class Concept(models.Model):
     title = models.CharField(max_length=100)
-    addedBy = models.ForeignKey(User)
-    approvedBy = models.ForeignKey(User, null=True,
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
+    approvedBy = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                    related_name='approvedConcepts')
     isError = models.BooleanField(default=False)
     isAbort = models.BooleanField(default=False)
@@ -134,8 +136,8 @@ class ConceptGraph(models.Model):
     toConcept = models.ForeignKey(Concept, related_name='relatedFrom')
     relationship = models.CharField(max_length=10, choices=REL_CHOICES,
                                     default=DEPENDS)
-    addedBy = models.ForeignKey(User)
-    approvedBy = models.ForeignKey(User, null=True,
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
+    approvedBy = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                    related_name='approvedConceptEdges')
     atime = models.DateTimeField('time submitted', default=timezone.now)
 
@@ -220,7 +222,7 @@ class Lesson(models.Model):
                               default=PUBLIC_ACCESS)
     sourceDB = models.CharField(max_length=32, null=True)
     sourceID = models.CharField(max_length=100, null=True)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     concept = models.ForeignKey(Concept, null=True) # concept definition
     treeID = models.IntegerField(null=True) # VCS METADATA
@@ -256,8 +258,8 @@ class Lesson(models.Model):
         dataClass = klass.get_sourceDB_plugin(sourceDB)
         data = dataClass(sourceID)
         try: # attribute authorship to the sourceDB
-            user = User.objects.get(username=sourceDB)
-        except User.DoesNotExist:
+            user = get_user_model().objects.get(username=sourceDB)
+        except get_user_model().DoesNotExist:
             pass
         lesson = klass(title=data.title, url=data.url, sourceDB=sourceDB,
                        sourceID=sourceID, addedBy=user, text=data.description,
@@ -381,7 +383,7 @@ class ConceptLink(models.Model):
     lesson = models.ForeignKey(Lesson)
     relationship = models.CharField(max_length=10, choices=REL_CHOICES,
                                     default=DEFINES)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     def copy(self, lesson):
         'copy this conceptlink to a new lesson'
@@ -422,7 +424,7 @@ DEFAULT_RELATION_MAP = {
 class StudyList(models.Model):
     'list of materials of interest to each user'
     lesson = models.ForeignKey(Lesson)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     def __unicode__(self):
         return self.lesson.title
 
@@ -464,7 +466,7 @@ class UnitLesson(models.Model):
     parent = models.ForeignKey('UnitLesson', null=True)
     order = models.IntegerField(null=True)
     atime = models.DateTimeField('time added', default=timezone.now)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     treeID = models.IntegerField() # VCS METADATA
     branch = models.CharField(max_length=32, default='master')
     ## @classmethod
@@ -689,7 +691,7 @@ class Unit(models.Model):
     kind = models.CharField(max_length=10, choices=KIND_CHOICES,
                             default=COURSELET)
     atime = models.DateTimeField('time created', default=timezone.now)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     def next_order(self):
         'get next order value for appending new UnitLesson.order'
         n = self.unitlesson_set.all().aggregate(n=Max('order'))['n']
@@ -894,7 +896,7 @@ class Response(models.Model):
                                 blank=False, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, 
                               blank=False, null=True)
-    author = models.ForeignKey(User)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL)
     needsEval = models.BooleanField(default=False)
     parent = models.ForeignKey('Response', null=True) # reply-to
     activity = models.ForeignKey('ActivityLog', null=True)
@@ -963,7 +965,7 @@ class StudentError(models.Model):
     errorModel = models.ForeignKey(UnitLesson)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, 
                               blank=False, null=True)
-    author = models.ForeignKey(User)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL)
     activity = models.ForeignKey('ActivityLog', null=True)
     def __unicode__(self):
         return 'eval by ' + self.author.username
@@ -999,20 +1001,20 @@ def errormodel_table(target, n, fmt='%d (%.0f%%)', includeAll=False, attr=''):
 class InquiryCount(models.Model):
     'record users who have the same question'
     response = models.ForeignKey(Response)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     
 class Liked(models.Model):
     'record users who found UnitLesson showed them something they were missing'
     unitLesson = models.ForeignKey(UnitLesson)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
 
 class FAQ(models.Model):
     'link a student inquiry to a follow-up lesson'
     response = models.ForeignKey(Response)
     unitLesson = models.ForeignKey(UnitLesson)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     
 
@@ -1032,7 +1034,7 @@ class Course(models.Model):
                               default=PUBLIC_ACCESS)
     enrollCode = models.CharField(max_length=64, null=True)
     lockout = models.CharField(max_length=200, null=True)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     def create_unit(self, title, author=None):
         if author is None:
@@ -1065,7 +1067,7 @@ class Course(models.Model):
     def get_users(self, role=None):
         if not role:
             role = Role.INSTRUCTOR
-        return User.objects.filter(role__role=role, role__course=self)
+        return get_user_model().objects.filter(role__role=role, role__course=self)
     def __unicode__(self):
         return self.title
 
@@ -1074,7 +1076,7 @@ class CourseUnit(models.Model):
     unit = models.ForeignKey(Unit)
     course = models.ForeignKey(Course)
     order = models.IntegerField()
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
     releaseTime = models.DateTimeField('time released', null=True)
     def is_published(self):
@@ -1095,13 +1097,13 @@ class Role(models.Model):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, 
                             default=ENROLLED)
     course = models.ForeignKey(Course)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     atime = models.DateTimeField('time submitted', default=timezone.now)
 
 class UnitStatus(models.Model):
     'records what user has completed in a unit lesson sequence'
     unit = models.ForeignKey(Unit)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     startTime = models.DateTimeField('time started', default=timezone.now)
     endTime = models.DateTimeField('time ended', null=True)
     order = models.IntegerField(default=0) # index of current UL
@@ -1262,7 +1264,7 @@ class FSM(models.Model):
     hideLinks = models.BooleanField(default=False)
     hideNav = models.BooleanField(default=False)
     atime = models.DateTimeField('time submitted', default=timezone.now)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     @classmethod
     def save_graph(klass, fsmData, nodeData, edgeData, username, fsmGroups=(),
                   oldLabel='OLD'):
@@ -1273,7 +1275,7 @@ class FSM(models.Model):
         using the old FSM will continue to work (following the old FSM spec),
         but any new activities will be created using the new FSM spec
         (since they request it by name).'''
-        user = User.objects.get(username=username)
+        user = get_user_model().objects.get(username=username)
         name = fsmData['name']
         oldName = name + oldLabel
         with transaction.atomic(): # rollback if db error occurs
@@ -1350,7 +1352,7 @@ class FSMNode(models.Model):
     path = models.CharField(max_length=200, null=True)
     data = models.TextField(null=True)
     atime = models.DateTimeField('time submitted', default=timezone.now)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     funcName = models.CharField(max_length=200, null=True)
     doLogging = models.BooleanField(default=False)
     load_json_data = load_json_data
@@ -1417,7 +1419,7 @@ class FSMEdge(models.Model):
     showOption = models.BooleanField(default=False)
     data = models.TextField(null=True)
     atime = models.DateTimeField('time submitted', default=timezone.now)
-    addedBy = models.ForeignKey(User)
+    addedBy = models.ForeignKey(settings.AUTH_USER_MODEL)
     _funcDict = {}
     load_json_data = load_json_data
     save_json_data = save_json_data
@@ -1434,7 +1436,7 @@ class FSMEdge(models.Model):
 
 class FSMState(models.Model):
     'stores current state of a running FSM instance'
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     fsmNode = models.ForeignKey(FSMNode)
     parentState = models.ForeignKey('FSMState', null=True,
                                     related_name='children')
@@ -1549,7 +1551,7 @@ class ActivityEvent(models.Model):
     'log FSM node entry/exit times'
     activity = models.ForeignKey(ActivityLog)
     nodeName = models.CharField(max_length=64)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     unitLesson = models.ForeignKey(UnitLesson, null=True)
     startTime = models.DateTimeField('time created', default=timezone.now)
     endTime = models.DateTimeField('time ended', null=True)
@@ -1559,3 +1561,6 @@ class ActivityEvent(models.Model):
         self.endTime = timezone.now()
         self.save()
 
+
+class CustomUser(AbstractUser):
+    is_temporary = models.BooleanField(default=False)

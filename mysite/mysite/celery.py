@@ -24,7 +24,8 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 from pytz import UTC
 from datetime import datetime
-from django.contrib.auth.models import User
+
+from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 
 from psa.models import UserSession
@@ -39,11 +40,12 @@ def check_anonymous():
     """
     now = datetime.utcnow().replace(tzinfo=UTC)
     user_sessions = UserSession.objects.filter(
-        user__username__startswith='anonymous')
+        user__is_temporary=True
+    )
 
     # zombie_users - temporary students without session
     zombie_users = (user for user in
-                    User.objects.filter(username__startswith='anonymous')
+                    get_user_model().objects.filter(is_temporary=True)
                     if user.id not in
                     (session.user.id for session in user_sessions))
 

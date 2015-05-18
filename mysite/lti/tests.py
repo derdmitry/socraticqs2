@@ -1,14 +1,18 @@
 # coding=utf-8
 
 import json
+
 import oauth2
 from mock import patch
 from django.test import TestCase, Client
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from lti.models import LTIUser
 from ct.models import Course, Role
 from psa.models import UserSocialAuth
+
+
+User = get_user_model()
 
 
 class LTITestCase(TestCase):
@@ -157,7 +161,7 @@ class ParamsTest(LTITestCase):
             self.assertTrue(LTIUser.objects.filter(consumer='moodle-2').exists())
             self.assertTrue(Role.objects.filter(role='student').exists())
             self.assertNotEqual(LTIUser.objects.get(consumer='moodle-2').django_user,
-                                User.objects.get(id=1))
+                                get_user_model().objects.get(id=1))
 
     def test_lti_user_no_username_no_email(self):
         """Test for non-existent username field
@@ -175,7 +179,7 @@ class ParamsTest(LTITestCase):
             self.assertTrue(LTIUser.objects.filter(consumer='moodle-2').exists())
             self.assertTrue(Role.objects.filter(role='student').exists())
             self.assertNotEqual(LTIUser.objects.get(consumer='moodle-2').django_user,
-                                User.objects.get(id=1))
+                                get_user_model().objects.get(id=1))
             self.assertEqual(LTIUser.objects.get(consumer='moodle-2').
                              django_user.username,
                              LTIUser.objects.get(consumer='moodle-2').user_id)

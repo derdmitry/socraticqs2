@@ -2,20 +2,23 @@ import mock
 from django.http import HttpResponse
 from django.test import TestCase, Client
 from django.test.client import RequestFactory
-from django.contrib.auth.models import User, AnonymousUser
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from social.exceptions import AuthAlreadyAssociated, AuthException
 
 from psa.views import (context,
                        validation_sent,
                        custom_login,
-                       done,
-                       ask_stranger)
+                       done)
 from psa.pipeline import (social_user,
                           not_allowed_to_merge,
                           associate_user,
                           associate_by_email,
                           social_merge,
                           union_merge)
+
+
+User = get_user_model()
 
 
 class ViewsUnitTest(TestCase):
@@ -123,7 +126,7 @@ class TestSocialUser(TestCase):
         self.main_user = User(username='main')
         self.social = mock.Mock()
         self.social.user = self.user
-        self.anonymous = User(username='anonymous_test')
+        self.anonymous = User(username='anonymous_test', is_temporary=True)
 
     def test_no_social(self):
         attrs = {'strategy.storage.user.get_social_auth.return_value': []}

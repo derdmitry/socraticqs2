@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.contrib.sessions.models import Session
 from django.contrib.auth.signals import user_logged_in
 
@@ -13,7 +12,7 @@ class AnonymEmail(models.Model):
     Model for temporary storing anonymous user emails
     to allow to restore anonymous sessions.
     """
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
     email = models.CharField(max_length=64)
     date = models.DateTimeField()
 
@@ -28,7 +27,8 @@ class SecondaryEmail(models.Model):
     We can store emails there from social_auth
     or LTI login.
     """
-    user = models.ForeignKey(User, related_name='secondary')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             related_name='secondary')
     provider = models.ForeignKey(UserSocialAuth)
     email = models.EmailField(verbose_name='Secondary Email')
 

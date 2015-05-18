@@ -1,8 +1,8 @@
 import json
-from django.db import models
-from django.contrib.auth import login
-from django.contrib.auth.models import User
 
+from django.db import models
+from django.conf import settings
+from django.contrib.auth import login, get_user_model
 from social.apps.django_app.default.models import UserSocialAuth
 
 from ct.models import Role, Course
@@ -40,7 +40,9 @@ class LTIUser(models.Model):
     user_id = models.CharField(max_length=255, blank=False)
     consumer = models.CharField(max_length=64, blank=True)
     extra_data = models.TextField(max_length=1024, blank=False)
-    django_user = models.ForeignKey(User, null=True, related_name='lti_auth')
+    django_user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                    null=True,
+                                    related_name='lti_auth')
     course_id = models.IntegerField()
 
     class Meta:
@@ -66,9 +68,9 @@ class LTIUser(models.Model):
             if social:
                 django_user = social.user
             else:
-                django_user = User.objects.filter(email=email).first()
+                django_user = get_user_model().objects.filter(email=email).first()
                 if not django_user:
-                    django_user, created = User.objects.get_or_create(
+                    django_user, created = get_user_model().objects.get_or_create(
                         username=username, defaults=defaults
                     )
                 social = UserSocialAuth(user=django_user,
@@ -77,7 +79,7 @@ class LTIUser(models.Model):
                                         extra_data=extra_data)
                 social.save()
         else:
-            django_user, created = User.objects.get_or_create(username=username,
+            django_user, created = get_user_model().objects.get_or_create(username=username,
                                                               defaults=defaults)
         self.django_user = django_user
         self.save()
