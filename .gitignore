@@ -8,6 +8,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+.venv/
 build/
 develop-eggs/
 dist/
@@ -63,9 +64,11 @@ static/
 deploy.sh
 celerybeat-schedule
 .idea/
-local_conf.py
+#local_conf.py
 socraticqs2.sublime-workspace
 sftp-config.json
 _ve_socraticqs2/
-fab_settings.py
+#fab_settings.py
 backups/*
+
+.venv/bin/activate
