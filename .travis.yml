@@ -7,7 +7,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y pandoc
   - sudo apt-get install firefox
-  - cp mysite/mysite/settings/local_conf.py.example mysite/mysite/settings/local_conf.py
+  - cp mysite/mysite/settings/local_conf_example.py mysite/mysite/settings/local_conf.py
   - cp
 # command to install dependencies
 install:
