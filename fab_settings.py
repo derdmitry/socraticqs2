@@ -7,4 +7,4 @@ Params:
 from fabric.api import env
 
 
-env.venv_name = '_ve_socraticqs2'
+env.venv_name = '.venv'

@@ -16,3 +16,10 @@ install:
 script:
   - cd mysite/
   - Xvfb :99 & export DISPLAY=:99 python manage.py test
+
+deploy:
+  provide: heroku
+  api_key:30854b32426b8f6fb25adbfa6c003467f6bda3cc
+  run:
+    - "sudo apt-get install -y pandoc"
+    - "fab db.init"
