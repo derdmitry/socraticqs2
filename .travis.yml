@@ -21,4 +21,5 @@ deploy:
   provide: heroku
   api_key: 30854b32426b8f6fb25adbfa6c003467f6bda3cc
   app: socraticqs
-
+  on:
+    branch: master
