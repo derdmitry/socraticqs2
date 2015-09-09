@@ -33,7 +33,7 @@ mock==1.0.1
 nose==1.3.6
 oauth2==1.5.211
 oauthlib==0.7.2
-pypandoc==0.9.7
+#pypandoc==0.9.7
 python-openid==2.2.5
 
 # social authentication/registration mechanizm
