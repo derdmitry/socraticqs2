@@ -18,9 +18,7 @@ script:
   - python manage.py test 
 
 deploy:
-  provider: heroku
-  api_key: 30854b32426b8f6fb25adbfa6c003467f6bda3cc
-  app: socraticqs
-  on:
-    all_branches: true
-    branch: master
+  provider: opsworks
+  access-key-id: ACCESS-KEY-ID
+  secret-access-key: SECRET-ACCESS-KEY
+  app-id: APP-ID
