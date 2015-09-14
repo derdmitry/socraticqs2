@@ -17,7 +17,7 @@ deploy:
   access_key_id: AKIAJOC53YQJD734SJEA
   secret_access_key: 
     secure: qCcOnqQV48Xe2YltK17Gyp18zbk2IkiVXyrRFig16ntVQ18+gTIEOOoQbAtkgdiIiZ6p4/kCZcXx8TMPbllt/rdR2GLC5AP/3p5T1l5i2pj+UIIiupY2I1hkhH68tubmhvpll7zwsQT1PE/PsduPnFpJuV1nMxN0yLRWcKFwM77mniyuJZ2bzW/2lhwcWkJn0E5MLIe7RWXw0+K5sWl59V4TKNS3aQuyMhcE6bdgYJq5tk0nXiKFwER+wt4U/Om1yzoVnCJRxurJFOk19Lc0reEhUgkG3kBcg98BYB4+RtvAhbyouLnVx48Q8AQGj6O4avNLwqqt5/HxV11Iv5EJSraEm3Rlu5czZr+baqyMBJnL9akZcUByZvQEnloxuPMpJUQqSJTErbImJnB4wOgt2moQE+5Xw2/ZVbu2AGR16ovRu+2zTUm/hVfkweNKhDrGkTMOLs+/tCc0zuKudQmKpyo4JyL0R3y/zF9KEdyEJIzRqbk83bNDkciph0YnCf608FuhuC+p2/1JBV2Bs6xTzJQHZfAyo1NyEUWa38x/eoq2WMts3eGJoOwXpR4JNn6Eztj5IILnvz9DvK6z8+LbsTz6E7x0pnA8uj5oKFOCPhJRpZo71y+X0lPiNB7g7gsFrb5evB12zirLk+msWFbM2FBf1KkY2z5jw3s0tWdPfG4=
-  app-id: i-92286453
+  app-id: 010c3e30-5ac2-4525-ad65-dd44ab417932
   on:
     repo: derdmitry/socraticqs2
 AKIAJCNGFZD565BNSNHA:
