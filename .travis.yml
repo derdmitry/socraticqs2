@@ -9,6 +9,9 @@ before_install:
   - cp fab_settings.py.example fab_settings.py
 install:
   - pip install -r requirements.txt
+  - pip install coveralls
 script:
   - cd mysite/
   - python manage.py test
+  - coverage run manage.py test
+after_success: coveralls
