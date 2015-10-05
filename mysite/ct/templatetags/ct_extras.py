@@ -25,7 +25,7 @@ def md2html(txt, stripP=False):
         pass
     txt = replace_temporary_markers(txt, audio_html, markers)
     txt = replace_temporary_markers(txt, video_html, videoMarkers)
-    txt = StaticImagePat.sub(staticfiles.static('ct/') + r'\1', txt)
+    txt = StaticImagePat.sub(staticfiles.static('ct') + '/' + r'\1', txt)
     if stripP and txt.startswith('<p>') and txt.endswith('</p>'):
         txt = txt[3:-4]
     return mark_safe(txt)
@@ -211,3 +211,12 @@ def display_datetime(dt):
     return '%s %d, %d' % (monthStrings[dt.month - 1], dt.day, dt.year)
 
 
+@register.filter
+def filter_input(edge, obj):
+    """Filter input UnitLesson to be acceptable for this edge.
+
+    :param edge: FSMEdge
+    :param obj: data object to be checked whether it's acceptable input.
+    :return:
+    """
+    return edge.filter_input(obj)

@@ -13,12 +13,11 @@ from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect, HttpResponse
-from django.views.decorators.cache import never_cache
 from social.backends.utils import load_backends
 
 from ct.forms import *
 from ct.models import *
-from ct.ct_util import reverse_path_args
+from ct.ct_util import reverse_path_args, cache_this
 from ct.templatetags.ct_extras import (md2html,
                                        get_base_url,
                                        get_object_url,
@@ -41,6 +40,8 @@ def check_instructor_auth(course, request):
         return HttpResponse("Only the instructor can access this",
                             status=403)
 
+
+@cache_this
 def make_tabs(path, current, tabs, tail=4, **kwargs):
     path = get_base_url(path, tail=tail, **kwargs)
     outTabs = []
@@ -123,7 +124,7 @@ def unit_tabs(path, current,
     return make_tabs(path, current, tabs, tail=2, **kwargs)
     
 def unit_tabs_student(path, current,
-              tabs=('Study:', 'Tasks', 'Lessons', 'Concepts'), **kwargs):
+              tabs=('Study:', 'Tasks', 'Lessons', 'Concepts', 'Resources'), **kwargs):
     return make_tabs(path, current, tabs, tail=2, **kwargs)
     
 def course_tabs(path, current, tabs=('Home:', 'Edit'), **kwargs):
@@ -155,8 +156,8 @@ class PageData(object):
         # now we check here whether event is actually from path matching
         # this node
         referer = request.META.get('HTTP_REFERER', '')
-        referer = referer[referer.find('/ct/'):]
-        if request.method == 'POST' and referer != self.fsmStack.state.path \
+        origin = request.META.get('HTTP_ORIGIN', '/'.join(referer.split('/')[:3]))
+        if request.method == 'POST' and referer != origin + self.fsmStack.state.path \
              and eventName in vagueEvents:
             r = None # don't even call FSM with POST events from other pages.
         else: # event from current node's page
@@ -230,7 +231,7 @@ class PageData(object):
     def fsm_off_path(self):
         'True if not on current node view or Activity Center view'
         return not self.fsmStack.state.fsm_on_path(self.path) and \
-          self.path != '/ct/nodes/'
+          self.path != reverse('fsm:fsm_status')
     def set_refresh_timer(self, request, timer=True):
         'start or end the refresh timer'
         if timer:
@@ -247,16 +248,13 @@ class PageData(object):
 
 
 def ul_page_data(request, unit_id, ul_id, currentTab, includeText=True,
-                 tabFunc=None, checkUnitStatus=False, includeNavTabs=True,
-                 **kwargs):
+                 tabFunc=None, includeNavTabs=True, **kwargs):
     'generate standard set of page data for a unitLesson'
     unit = get_object_or_404(Unit, pk=unit_id)
     ul = get_object_or_404(UnitLesson, pk=ul_id)
     if not tabFunc:
         tabFunc = auto_tabs
     pageData = PageData(request, title=ul.lesson.title, **kwargs)
-    if checkUnitStatus and not UnitStatus.is_done(unit, request.user):
-        includeNavTabs = False
     if includeNavTabs:
         pageData.navTabs = tabFunc(request.path, currentTab, ul)
     if includeText:
@@ -274,7 +272,6 @@ def ul_page_data(request, unit_id, ul_id, currentTab, includeText=True,
 ###########################################################
 # WelcomeMat refactored instructor views
 
-@never_cache
 @login_required
 def main_page(request):
     'generic home page'
@@ -287,7 +284,6 @@ def main_page(request):
                            dict(liveSessions=liveSessions))
 
 
-@never_cache
 def person_profile(request, user_id):
     'stub for basic user info page'
     person = get_object_or_404(User, pk=user_id)
@@ -306,14 +302,12 @@ def person_profile(request, user_id):
                                 available_backends=load_backends(settings.AUTHENTICATION_BACKENDS)))
 
 
-@never_cache
 def about(request):
     pageData = PageData(request)
     return pageData.render(request, 'ct/about.html')
 
 # course views
 
-@never_cache
 @login_required
 def course_view(request, course_id):
     'show courselets in a course'
@@ -390,7 +384,6 @@ def edit_course(request, course_id):
                        domain='https://{0}'.format(Site.objects.get_current().domain)))
 
 
-@never_cache
 def courses(request):
     """Courses view
 
@@ -855,18 +848,19 @@ def copy_unit_lesson(ul, concept, unit, addedBy, parentUL):
 
 @login_required
 def unit_lessons(request, course_id, unit_id, lessonTable=None,
-                 currentTab='Lessons', showReorderForm=True):
+                 currentTab='Lessons', showReorderForm=True,
+                 msg='''You can search for a lesson to add
+          to this courselet by entering a search term below.
+          (To write a new lesson, click on the Concepts tab to identify
+          what concept your new lesson will be about).''', **kwargs):
     unit = get_object_or_404(Unit, pk=unit_id)
     pageData = PageData(request, title=unit.title,
                         navTabs=unit_tabs(request.path, currentTab))
     if lessonTable is None:
         lessonTable = unit.get_exercises()
-    r = _lessons(request, pageData, msg='''You can search for a lesson to add
-          to this courselet by entering a search term below.
-          (To write a new lesson, click on the Concepts tab to identify
-          what concept your new lesson will be about).''', 
+    r = _lessons(request, pageData, msg=msg, 
                   unit=unit, showReorderForm=showReorderForm,
-                  lessonTable=lessonTable, selectULFunc=copy_unit_lesson)
+                  lessonTable=lessonTable, selectULFunc=copy_unit_lesson, **kwargs)
     if isinstance(r, UnitLesson):
         red = pageData.fsm_redirect(request, 'create_UnitLesson',
                                     defaultURL=None, unitLesson=r)
@@ -875,7 +869,7 @@ def unit_lessons(request, course_id, unit_id, lessonTable=None,
         lessonTable.append(r)
         return _lessons(request, pageData, msg='''Successfully added lesson.
             Thank you!''', ignorePOST=True, showReorderForm=showReorderForm,
-            unit=unit, lessonTable=lessonTable)
+            unit=unit, lessonTable=lessonTable, **kwargs)
     return r
 
 @login_required
@@ -885,7 +879,7 @@ def unit_resources(request, course_id, unit_id):
             .filter(kind=UnitLesson.COMPONENT, order__isnull=True))
     lessonTable.sort(lambda x,y:cmp(x.lesson.title, y.lesson.title))
     return unit_lessons(request, course_id, unit_id, lessonTable,
-                        'Resources', showReorderForm=False)
+                        'Resources', msg='', showReorderForm=False, allowSearch=False)
 
 
 @login_required
@@ -1186,25 +1180,20 @@ def error_resources(request, course_id, unit_id, ul_id):
 ###########################################################
 # welcome mat refactored student UI for courses
 
-@never_cache
 @login_required
 def study_unit(request, course_id, unit_id):
     course = get_object_or_404(Course, pk=course_id)
     unit = get_object_or_404(Unit, pk=unit_id)
-    unitStatus = None
     pageData = PageData(request, title=unit.title)
+    if UnitStatus.objects.filter(user=request.user, unit=unit).exists() \
+      or Response.objects.filter(unitLesson__unit=unit, author=request.user).exists():
+        pageData.navTabs = unit_tabs_student(request.path, 'Study') # show tabs
     startForm = push_button(request)
     if not startForm: # user clicked Start
-        return pageData.fsm_push(request, 'lessonseq',
-                                 dict(unit=unit, course=course))
-    if unitStatus:
-        nextUL = unitStatus.get_lesson()
-        if unitStatus.endTime: # already completed unit
-            pageData.navTabs = unit_tabs_student(request.path, 'Study')
-    else:
-        nextUL = None
+        stateData = dict(unit=unit, course=course)
+        return pageData.fsm_push(request, 'lessonseq', stateData)
     return pageData.render(request, 'ct/study_unit.html',
-                dict(unitLesson=nextUL, unit=unit, startForm=startForm))
+                dict(unit=unit, startForm=startForm))
 
 
 @login_required
@@ -1237,15 +1226,29 @@ def unit_tasks_student(request, course_id, unit_id):
     return pageData.render(request, 'ct/unit_tasks_student.html',
                            dict(unit=unit, taskTable=taskTable))
 
-def unit_lessons_student(request, course_id, unit_id):
+def unit_lessons_student(request, course_id, unit_id, lessonTable=None,
+                         currentTab='Lessons'):
     unit = get_object_or_404(Unit, pk=unit_id)
     pageData = PageData(request, title=unit.title,
-                        navTabs=unit_tabs_student(request.path, 'Lessons'))
-    lessonTable = unit.unitlesson_set \
+                        navTabs=unit_tabs_student(request.path, currentTab))
+    if lessonTable is None:
+        lessonTable = unit.unitlesson_set \
             .filter(kind=UnitLesson.COMPONENT, order__isnull=False) \
             .order_by('order')
     return pageData.render(request, 'ct/lessons_student.html',
                            dict(lessonTable=lessonTable))
+
+def unit_resources_student(request, course_id, unit_id):
+    """
+    Show additional lesson resources not included in Concepts tab
+    """
+    unit = get_object_or_404(Unit, pk=unit_id)
+    lessonTable = list(unit.unitlesson_set \
+            .filter(kind=UnitLesson.COMPONENT, order__isnull=True,
+                    lesson__concept__isnull=True)) # exclude concepts
+    lessonTable.sort(lambda x,y:cmp(x.lesson.title, y.lesson.title))
+    return unit_lessons_student(request, course_id, unit_id, lessonTable,
+                                'Resources')
 
 @login_required
 def unit_concepts_student(request, course_id, unit_id):
@@ -1274,10 +1277,9 @@ def lesson_next_url(request, ul, course_id):
     return nextUL.get_study_url(course_id)
     
         
-def lesson(request, course_id, unit_id, ul_id):
+def lesson(request, course_id, unit_id, ul_id, redirectQuestions=True):
     'show student a reading assignment'
-    unit, ul, _, pageData = ul_page_data(request, unit_id, ul_id,'Study',
-            checkUnitStatus=True, includeText=False)
+    unit, ul, _, pageData = ul_page_data(request, unit_id, ul_id, 'Study', includeText=False)
     if request.method == 'POST':
         nextForm = NextLikeForm(request.POST)
         if nextForm.is_valid():
@@ -1287,13 +1289,19 @@ def lesson(request, course_id, unit_id, ul_id):
             defaultURL = lesson_next_url(request, ul, course_id)
             # let fsm redirect this event if it wishes
             return pageData.fsm_redirect(request, 'next', defaultURL)
-    ## elif ul.lesson.kind == Lesson.ORCT_QUESTION:
-    ##     return HttpResponseRedirect(request.path + 'ask/')
+    elif redirectQuestions and ul.lesson.kind == Lesson.ORCT_QUESTION:
+        return HttpResponseRedirect(request.path + 'ask/')
     pageData.nextForm = NextLikeForm()
     set_crispy_action(request.path, pageData.nextForm)
     return pageData.render(request, 'ct/lesson_student.html',
                            dict(unitLesson=ul, unit=unit))
 
+def lesson_read(request, course_id, unit_id, ul_id):
+    """
+    present lesson as passive reading assignment
+    """
+    return lesson(request, course_id, unit_id, ul_id, redirectQuestions=False)
+    
 def ul_tasks_student(request, course_id, unit_id, ul_id):
     'suggest next steps on this question'
     unit, ul, _, pageData = ul_page_data(request, unit_id, ul_id, 'Tasks')
@@ -1445,8 +1453,9 @@ def save_response(form, ul, user, course_id, **kwargs):
 @login_required
 def ul_respond(request, course_id, unit_id, ul_id):
     'ask student a question'
+    includeNavTabs = Response.objects.filter(unitLesson_id=ul_id, author=request.user).exists()
     unit, ul, _, pageData = ul_page_data(request, unit_id, ul_id,'Study',
-            checkUnitStatus=True, includeText=False)
+            includeNavTabs=includeNavTabs, includeText=False)
     if request.method == 'POST':
         form = ResponseForm(request.POST)
         if form.is_valid():
@@ -1512,7 +1521,7 @@ def assess_errors(request, course_id, unit_id, ul_id, resp_id):
     unit, ul, _, pageData = ul_page_data(request, unit_id, ul_id, 'Study')
     r = get_object_or_404(Response, pk=resp_id)
     allErrors = list(r.unitLesson.get_errors()) + unit.get_aborts()
-    if request.method == 'POST' and 'emlist' in request.POST:
+    if request.method == 'POST':
         if request.user == r.author:
             status = r.status
         else:

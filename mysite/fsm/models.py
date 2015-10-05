@@ -140,7 +140,10 @@ class JSONBlobMixin(object):
         Get a single data attribute from json data.
         """
         obj_dict = self.load_json_data()
-        return obj_dict[attr]
+        try:
+            return obj_dict[attr]
+        except KeyError:
+            raise AttributeError('JSON data has no attr %s' % attr)
 
 
 class FSM(models.Model):
@@ -351,6 +354,16 @@ class FSMEdge(JSONBlobMixin, models.Model):
             return self.toNode
         else:
             return func(self, fsmStack, request, **kwargs)
+    def filter_input(self, obj):
+        """
+        Use plugin code to check whether obj is acceptable input to this edge.
+        """
+        try: # see if plugin code provides select_X_filter() call
+            func = getattr(self.fromNode._plugin, self.name + '_filter')
+        except AttributeError: # no plugin method, so accept by default
+            return True
+        else:
+            return func(self, obj)
 
 
 class FSMState(JSONBlobMixin, models.Model):
