@@ -326,3 +326,38 @@ LOGGING = {
     }
 }
 CMS_PLACEHOLDER_CONF = {}
+CMS_PLACEHOLDER_CONF = {
+    'content': {
+        'name' : 'Content',
+        'plugins': ['TextPlugin', 'LinkPlugin'],
+        'default_plugins':[
+            {
+                'plugin_type':'TextPlugin',
+                'values':{
+                    'body':'<p>Great websites : %(_tag_child_1)s and %(_tag_child_2)s</p>'
+                },
+                'children':[
+                    {
+                        'plugin_type':'LinkPlugin',
+                        'values':{
+                            'name':'django',
+                            'url':'https://www.djangoproject.com/'
+                        },
+                    },
+                    {
+                        'plugin_type':'LinkPlugin',
+                        'values':{
+                            'name':'django-cms',
+                            'url':'https://www.django-cms.org'
+                        },
+                    },
+                ]
+            },
+        ]
+    }
+}
+CKEDITOR_SETTINGS = {
+    'language': '{{ language }}',
+    'toolbar': 'Full',
+    'skin': 'moono',
+}
