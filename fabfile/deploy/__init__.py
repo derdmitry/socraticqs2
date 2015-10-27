@@ -19,6 +19,7 @@ django.settings_module('mysite.settings')
 
 STAGING_BRANCH = 'master'
 BASE_PATH = os.path.dirname(__file__)
+STAGING_HOST = 'staging.courselets.org'
 
 class Deploying(Task):
     """
@@ -64,9 +65,10 @@ class Deploying(Task):
         if running == 'local':
             self.func = local
             self.func_cd = lcd
-        elif running == 'server':
+        elif running == 'remote':
             self.func = run
             self.func_cd = cd
+            env.hosts = [STAGING_HOST, ]
 
         self.__code_branch = branch
         self.__update()
