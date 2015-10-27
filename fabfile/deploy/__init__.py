@@ -37,7 +37,7 @@ class Deploying(Task):
     def __get_settings(self, branch='master'):
         with self.func_cd(self.__local_settings_path):
             self.func('git pull origin {0}'.format(branch))
-            self.func('cp local_conf_example.py ../socraticqs2/mysite/mysite/local_conf.py')
+            self.func('cp production_conf.py ../socraticqs2/mysite/mysite/production_conf.py')
 
     def __restart_service(self):
         self.func('sudo supervisorctl restart gunicorn')
@@ -67,15 +67,17 @@ class Deploying(Task):
         self.__update()
 
 
-class Development(Deploying):
+class Staging(Deploying):
+    def __get_settings(self, branch='master'):
+        """On dev/staging we don't use production settings"""
+
+
+class Development(Staging):
 
     __project_path = os.path.join(BASE_PATH, '/../../dev')
     __code_branch = 'dev'
 
-    def __get_settings(self):
-        """On dev staging we don't use prodaction settings"""
-        pass
 
-
-staging = Deploying()
+prod = Deploying()
+staging = Staging()
 dev = Development()
