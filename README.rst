@@ -3,6 +3,9 @@ Socraticqs2
 
 Socraticqs2 is the web engine for courselets.org.
 
+.. image:: https://api.travis-ci.org/derdmitry/socraticqs2.png?branch=master
+   :target: https://api.travis-ci.org/derdmitry/socraticqs2
+
 Developer documentation is available at http://cjlee112.github.io/socraticqs2
 
 
