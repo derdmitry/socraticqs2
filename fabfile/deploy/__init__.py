@@ -1,4 +1,9 @@
 # coding: utf-8
+"""
+Fabric task for deploying project on servers(production, staging, development)
+
+
+"""
 import os
 import sys
 
@@ -17,7 +22,7 @@ BASE_PATH = os.path.dirname(__file__)
 
 class Deploying(Task):
     """
-    Deploy project
+    Deploy project on Production
     """
 
     func = local
@@ -68,12 +73,19 @@ class Deploying(Task):
 
 
 class Staging(Deploying):
+    """Deploy on Staging"""
     def __get_settings(self, branch='master'):
         """On dev/staging we don't use production settings"""
 
 
 class Development(Staging):
-
+    """Deploy on Development server
+    Args:
+        running - deploy code local or in server(local/run)
+        branch - git branch name
+    Example:
+        fab deploy.dev:running='local', branch='dev'
+    """
     __project_path = os.path.join(BASE_PATH, '/../../dev')
     __code_branch = 'dev'
 
