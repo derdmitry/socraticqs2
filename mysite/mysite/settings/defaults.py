@@ -118,6 +118,7 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE_CLASSES = (
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -190,6 +191,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
    'psa.context_processors.debug_settings',
    'mysite.context_processors.google_analytics',
 
+   'sekizai.context_processors.sekizai',
+   'cms.context_processors.cms_settings',
 )
 
 AUTHENTICATION_BACKENDS = (
